@@ -31,7 +31,6 @@ export function useTabPersistence(
       return stored || defaultTab;
     } catch (error) {
       // Silently fail if localStorage is unavailable (privacy mode, quota exceeded, etc.)
-      console.warn('Unable to access localStorage:', error);
       return defaultTab;
     }
   });
@@ -44,7 +43,7 @@ export function useTabPersistence(
       try {
         localStorage.setItem(STORAGE_KEY, tab);
       } catch (error) {
-        console.warn('Unable to persist tab state:', error);
+        // Silently fail
       }
     }
   };
@@ -78,7 +77,7 @@ export function clearTabPersistence(): void {
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch (error) {
-      console.warn('Unable to clear tab state:', error);
+      // Silently fail
     }
   }
 }

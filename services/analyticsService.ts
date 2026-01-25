@@ -40,7 +40,7 @@ export const addSearchHistory = async (
     // Update content type metrics
     await updateContentTypeMetrics(videoId, entry.isShort ? 'short' : 'video', 'search');
   } catch (error) {
-    console.error('Failed to add search history:', error);
+    // Error silently ignored
   }
 };
 
@@ -61,7 +61,7 @@ export const trackAnalyticsEvent = async (
     };
     await db.analyticsEvents.add(event);
   } catch (error) {
-    console.error('Failed to track analytics event:', error);
+    // Error silently ignored
   }
 };
 
@@ -142,7 +142,7 @@ const updateContentTypeMetrics = async (
       await db.contentTypeMetrics.add(newMetric);
     }
   } catch (error) {
-    console.error('Failed to update content type metrics:', error);
+    // Error silently ignored
   }
 };
 
@@ -539,7 +539,7 @@ export const updateSearchHistoryWithVideoDetails = async (
       });
     }
   } catch (error) {
-    console.error('Failed to update search history with video details:', error);
+    // Error silently ignored
   }
 };
 
@@ -564,7 +564,7 @@ export const updateSearchHistoryWithResultsCount = async (
       });
     }
   } catch (error) {
-    console.error('Failed to update search history with results count:', error);
+    // Error silently ignored
   }
 };
 
@@ -619,7 +619,7 @@ export const getTopSearchTerms = async (limit = 10, daysBack = 30): Promise<Arra
       .sort((a, b) => b.searchCount - a.searchCount)
       .slice(0, limit);
   } catch (error) {
-    console.error('Failed to get top search terms:', error);
+    // Error silently ignored
     return [];
   }
 };
@@ -650,7 +650,7 @@ export const getCurrentSession = (): SessionData => {
       }
     }
   } catch (error) {
-    console.error('Failed to read session data:', error);
+    // Error silently ignored
   }
 
   // Create new session
@@ -672,7 +672,7 @@ export const updateSessionActivity = (): void => {
     session.lastActivity = Date.now();
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
   } catch (error) {
-    console.error('Failed to update session activity:', error);
+    // Error silently ignored
   }
 };
 
@@ -686,7 +686,7 @@ export const incrementSessionSearchCount = (): void => {
     session.lastActivity = Date.now();
     localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
   } catch (error) {
-    console.error('Failed to increment session search count:', error);
+    // Error silently ignored
   }
 };
 
@@ -715,6 +715,6 @@ export const endSession = (): void => {
   try {
     localStorage.removeItem(SESSION_STORAGE_KEY);
   } catch (error) {
-    console.error('Failed to end session:', error);
+    // Error silently ignored
   }
 };

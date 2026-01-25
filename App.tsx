@@ -47,8 +47,10 @@ const App: React.FC = () => {
     if (stored) setApiKey(stored);
   }, []);
 
-  const handleSaveKey = (key: string) => {
-    localStorage.setItem('yt_api_key', key);
+  const handleSaveKey = (key: string, persist: boolean) => {
+    if (persist) {
+      localStorage.setItem('yt_api_key', key);
+    }
     setApiKey(key);
   };
 
@@ -61,7 +63,7 @@ const App: React.FC = () => {
       const id = extractVideoId(inputUrl);
       if (id) {
           // Track search history (video title will be fetched later in Dashboard)
-          addSearchHistory(inputUrl, id).catch(console.error);
+          addSearchHistory(inputUrl, id).catch(() => {});
           // Increment session search count
           incrementSessionSearchCount();
           setVideoId(id);

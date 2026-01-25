@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Key, CheckCircle, AlertCircle, Save, ExternalLink, HelpCircle } from 'lucide-react';
+import { Key, CheckCircle, AlertCircle, Save, HelpCircle } from 'lucide-react';
 import { validateApiKey } from '../services/youtubeService';
 
 interface SettingsProps {
-  onSave: (key: string) => void;
+  onSave: (key: string, persist: boolean) => void;
   initialKey: string;
 }
 
 const Settings: React.FC<SettingsProps> = ({ onSave, initialKey }) => {
   const [key, setKey] = useState(initialKey);
+  const [saveKey, setSaveKey] = useState(true);
   const [status, setStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -20,12 +21,12 @@ const Settings: React.FC<SettingsProps> = ({ onSave, initialKey }) => {
     if (!key) return;
     setStatus('validating');
     setErrorMessage(null);
-    
+
     const { isValid, error } = await validateApiKey(key);
-    
+
     if (isValid) {
       setStatus('valid');
-      onSave(key);
+      onSave(key, saveKey);
     } else {
       setStatus('invalid');
       setErrorMessage(error || "Invalid API Key");
@@ -33,7 +34,7 @@ const Settings: React.FC<SettingsProps> = ({ onSave, initialKey }) => {
   };
 
   const handleForceSave = () => {
-      onSave(key);
+      onSave(key, saveKey);
   };
 
   const isBlockedError = errorMessage?.toLowerCase().includes('blocked') || errorMessage?.toLowerCase().includes('access not configured');
@@ -78,13 +79,13 @@ const Settings: React.FC<SettingsProps> = ({ onSave, initialKey }) => {
                     <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <span className="break-words">{errorMessage}</span>
                   </div>
-                  
+
                   {isBlockedError && (
                       <div className="mt-2 pl-6">
                           <p className="text-xs text-red-200 mb-1 font-semibold">Possible Fixes:</p>
                           <ul className="list-disc list-inside text-[10px] text-gray-300 space-y-1 mt-1">
                             <li>
-                                <a 
+                                <a
                                     href="https://console.cloud.google.com/apis/library/youtube.googleapis.com"
                                     target="_blank"
                                     rel="noopener noreferrer"
@@ -101,6 +102,28 @@ const Settings: React.FC<SettingsProps> = ({ onSave, initialKey }) => {
               </div>
           )}
         </div>
+
+        <label className="flex items-start gap-3 p-3 bg-gray-900/50 rounded-lg border border-gray-700/50 cursor-pointer hover:bg-gray-900/70 transition-colors">
+          <input
+            type="checkbox"
+            checked={saveKey}
+            onChange={(e) => setSaveKey(e.target.checked)}
+            className="mt-0.5 w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800"
+          />
+          <div className="flex-1 text-xs text-gray-400">
+            <span className="font-medium text-gray-300">Save API Key</span>
+            {saveKey && (
+              <p className="mt-1 text-[10px] text-yellow-400/80">
+                ⚠️ Your key will be stored in browser localStorage. Only enable this on trusted devices. Anyone with access to this browser can use your API quota.
+              </p>
+            )}
+            {!saveKey && (
+              <p className="mt-1 text-[10px] text-gray-500">
+                Key will only be used for this session. You'll need to re-enter it when you close the tab.
+              </p>
+            )}
+          </div>
+        </label>
 
         <button
           onClick={handleValidateAndSave}

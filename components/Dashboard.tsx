@@ -3,7 +3,7 @@ import { Search, Loader2, Play, Download, Filter, Trash2, ArrowLeft, RefreshCw, 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, resetDatabaseForVideo } from '../db';
 import { VideoMetadata, ScanStats } from '../types';
-import { fetchCommentThreads, fetchReplies, fetchVideoDetails } from '../services/youtubeService';
+import { fetchCommentThreads, fetchReplies, fetchVideoDetails, sanitizeError } from '../services/youtubeService';
 import { trackScanStarted, trackScanCompleted, trackScanPaused, trackScanError, updateSearchHistoryWithResultsCount } from '../services/analyticsService';
 import CommentCard from './CommentCard';
 
@@ -63,7 +63,7 @@ const Dashboard: React.FC<DashboardProps> = ({ videoId, apiKey, onBack }) => {
     setStats(prev => ({ ...prev, status: 'running', mode: 'smart', error: undefined }));
 
     // Track scan started
-    trackScanStarted(videoId, 'smart').catch(console.error);
+    trackScanStarted(videoId, 'smart').catch(() => {});
 
     try {
       let pageToken: string | null = '';
@@ -99,12 +99,12 @@ const Dashboard: React.FC<DashboardProps> = ({ videoId, apiKey, onBack }) => {
 
       // Track scan completed
       if (!cancelScanRef.current) {
-        trackScanCompleted(videoId, 'smart', totalFetched).catch(console.error);
-        updateSearchHistoryWithResultsCount(videoId, stats.fetchedCount).catch(console.error);
+        trackScanCompleted(videoId, 'smart', totalFetched).catch(() => {});
+        updateSearchHistoryWithResultsCount(videoId, stats.fetchedCount).catch(() => {});
       }
     } catch (e: any) {
-      setStats(prev => ({ ...prev, status: 'error', error: e.message }));
-      trackScanError(videoId, e.message).catch(console.error);
+      setStats(prev => ({ ...prev, status: 'error', error: sanitizeError(e.message) }));
+      trackScanError(videoId, sanitizeError(e.message)).catch(() => {});
     }
   }, [videoId, apiKey]);
 
@@ -113,7 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({ videoId, apiKey, onBack }) => {
      setStats({ ...stats, status: 'running', mode: 'deep' });
 
      // Track scan started
-     trackScanStarted(videoId, 'deep').catch(console.error);
+     trackScanStarted(videoId, 'deep').catch(() => {});
 
      try {
        const threads = await db.comments
@@ -133,19 +133,19 @@ const Dashboard: React.FC<DashboardProps> = ({ videoId, apiKey, onBack }) => {
 
         // Track scan completed
         if (!cancelScanRef.current) {
-          trackScanCompleted(videoId, 'deep', totalFetched).catch(console.error);
-          updateSearchHistoryWithResultsCount(videoId, stats.fetchedCount).catch(console.error);
+          trackScanCompleted(videoId, 'deep', totalFetched).catch(() => {});
+          updateSearchHistoryWithResultsCount(videoId, stats.fetchedCount).catch(() => {});
         }
      } catch (e: any) {
-         setStats(prev => ({ ...prev, status: 'error', error: e.message }));
-         trackScanError(videoId, e.message).catch(console.error);
+         setStats(prev => ({ ...prev, status: 'error', error: sanitizeError(e.message) }));
+         trackScanError(videoId, sanitizeError(e.message)).catch(() => {});
      }
   };
 
   const stopScan = () => {
       cancelScanRef.current = true;
       setStats(prev => ({ ...prev, status: 'paused' }));
-      trackScanPaused(videoId).catch(console.error);
+      trackScanPaused(videoId).catch(() => {});
   };
 
   const handleClear = async () => {
@@ -178,7 +178,7 @@ const Dashboard: React.FC<DashboardProps> = ({ videoId, apiKey, onBack }) => {
                   }
               }
           } catch (e: any) {
-              if (active) setInitError(e.message || "Initialization failed");
+              if (active) setInitError(sanitizeError(e.message || "Initialization failed"));
           }
       };
       

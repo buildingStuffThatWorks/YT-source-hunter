@@ -9,6 +9,23 @@ import {
 
 const API_BASE = 'https://www.googleapis.com/youtube/v3';
 
+// YouTube API key format validation
+// Keys typically start with "AIza" and are 39 characters
+const isValidApiKeyFormat = (key: string): boolean => {
+  return /^AIza[A-Za-z0-9_-]{35}$/.test(key);
+};
+
+// Sanitize error messages to prevent exposing sensitive information
+const sanitizeError = (error: string): string => {
+  // Remove API key patterns if accidentally included
+  let sanitized = error.replace(/AIza[A-Za-z0-9_-]{35}/g, '[REDACTED_KEY]');
+  // Remove any URLs that might contain sensitive data
+  sanitized = sanitized.replace(/https?:\/\/[^\s]+/g, '[URL_REDACTED]');
+  // Remove file paths
+  sanitized = sanitized.replace(/\/[a-zA-Z0-9_\-\/]+\.(ts|tsx|js|jsx)/g, '[FILE]');
+  return sanitized;
+};
+
 // Rate Limiter Queue
 const requestQueue: (() => Promise<void>)[] = [];
 let isProcessingQueue = false;
@@ -44,6 +61,14 @@ const enqueueRequest = <T>(request: () => Promise<T>): Promise<T> => {
 };
 
 export const validateApiKey = async (apiKey: string): Promise<{ isValid: boolean; error?: string }> => {
+  // Check format first before making API call
+  if (!isValidApiKeyFormat(apiKey)) {
+    return {
+      isValid: false,
+      error: 'Invalid key format. YouTube API v3 keys typically start with "AIza" and are 39 characters long.'
+    };
+  }
+
   try {
     const response = await fetch(`${API_BASE}/videos?part=snippet&chart=mostPopular&maxResults=1&key=${apiKey}`);
     if (response.ok) {
@@ -53,22 +78,24 @@ export const validateApiKey = async (apiKey: string): Promise<{ isValid: boolean
     try {
         const data = await response.json();
         if (data.error && data.error.message) {
-            errorMsg = data.error.message;
+            errorMsg = sanitizeError(data.error.message);
         }
     } catch (e) {
         // ignore json parse error
     }
     return { isValid: false, error: errorMsg };
   } catch (e: any) {
-    return { isValid: false, error: e.message || "Network validation failed" };
+    return { isValid: false, error: sanitizeError(e.message || "Network validation failed") };
   }
 };
+
+export { isValidApiKeyFormat, sanitizeError };
 
 export const fetchVideoDetails = async (videoId: string, apiKey: string): Promise<VideoMetadata | null> => {
   return enqueueRequest(async () => {
     const response = await fetch(`${API_BASE}/videos?part=snippet,statistics&id=${videoId}&key=${apiKey}`);
     // Track API call
-    trackApiCall('videos', videoId).catch(console.error);
+    trackApiCall('videos', videoId).catch(() => {});
 
     const data = await response.json();
     if (!data.items || data.items.length === 0) return null;
@@ -87,7 +114,7 @@ export const fetchVideoDetails = async (videoId: string, apiKey: string): Promis
     await db.videos.put(meta);
 
     // Update search history with video details
-    updateSearchHistoryWithVideoDetails(videoId, meta.title, meta.thumbnailUrl).catch(console.error);
+    updateSearchHistoryWithVideoDetails(videoId, meta.title, meta.thumbnailUrl).catch(() => {});
 
     return meta;
   });
@@ -132,7 +159,7 @@ export const fetchCommentThreads = async (
 
     const res = await fetch(url.toString());
     // Track API call
-    trackApiCall('commentThreads', videoId).catch(console.error);
+    trackApiCall('commentThreads', videoId).catch(() => {});
 
     if (res.status === 403) throw new Error("Quota Exceeded");
     if (!res.ok) throw new Error("Network Error");
@@ -175,7 +202,7 @@ export const fetchCommentThreads = async (
     onProgress(comments.length);
 
     // Track comments fetched
-    trackCommentsFetched(videoId, comments.length).catch(console.error);
+    trackCommentsFetched(videoId, comments.length).catch(() => {});
 
     return data.nextPageToken || null;
   });
