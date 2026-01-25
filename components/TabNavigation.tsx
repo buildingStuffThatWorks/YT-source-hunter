@@ -44,18 +44,18 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
     <div className={`relative bg-gray-900 ${className}`}>
       {/* Navigation Bar */}
       <nav className="flex items-center justify-center">
-        <div className="relative flex items-center bg-gray-800/50 rounded-xl p-1">
+        <div className="relative grid grid-cols-3 gap-1 bg-gray-800/50 rounded-xl p-1 w-full">
           {/* Sliding Indicator */}
           <div
-            className="absolute inset-y-1 bg-gray-700 rounded-lg shadow-lg transition-all duration-300 ease-out"
+            className="absolute inset-y-1 bg-gray-700 rounded-lg shadow-lg transition-all duration-300 ease-out z-0"
             style={{
-              left: `calc(${activeIndex * 100}% + ${activeIndex * 4}px)`,
-              width: `calc((100% - ${tabs.length * 4}px) / ${tabs.length})`
+              transform: `translateX(${activeIndex * 100}%)`,
+              width: `calc(33.333% - 4px)`
             }}
           />
 
           {/* Tab Buttons */}
-          {tabs.map((tab) => {
+          {tabs.map((tab, index) => {
             const Icon = tab.icon;
             const isActive = tab.id === activeTab;
 
@@ -65,13 +65,13 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
                 onClick={() => onTabChange(tab.id)}
                 className={`
                   relative flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg
-                  text-sm font-medium transition-all duration-200
+                  text-sm font-medium transition-all duration-200 z-10
                   ${isActive
                     ? 'text-white'
                     : 'text-gray-400 hover:text-gray-200'
                   }
                   focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-inset
-                  min-w-[80px]
+                  w-full
                 `}
                 aria-selected={isActive}
                 role="tab"

@@ -112,19 +112,19 @@ const History: React.FC<HistoryProps> = ({ onSelectVideo }) => {
   if (filteredHistory.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-gray-500">
-        <Clock className="w-16 h-16 mb-4 opacity-20" />
-        <p className="text-lg font-medium">No search history yet</p>
-        <p className="text-sm mt-2">Search for a video to get started</p>
+        <Clock className="w-16 h-16 mb-4 opacity-30" />
+        <p className="text-lg font-medium text-gray-600">No search history yet</p>
+        <p className="text-sm mt-2 text-gray-500">Search for a video to get started</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-900 text-white">
+    <div className="flex flex-col h-full bg-gray-950 text-white">
       {/* Header */}
-      <header className="flex-none p-4 border-b border-gray-800 bg-gray-900/95 backdrop-blur z-10">
+      <header className="flex-none p-4 border-b border-gray-800 bg-gray-950/95 backdrop-blur z-10">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Search History</h2>
+          <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">Search History</h2>
           <button
             onClick={handleClearHistory}
             className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors"
@@ -139,7 +139,7 @@ const History: React.FC<HistoryProps> = ({ onSelectVideo }) => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search history..."
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </header>
@@ -155,7 +155,7 @@ const History: React.FC<HistoryProps> = ({ onSelectVideo }) => {
               {entries.map((entry) => (
                 <div
                   key={entry.id}
-                  className="bg-gray-800/50 border border-gray-700 hover:border-gray-600 rounded-xl p-4 transition-all group hover:bg-gray-800 cursor-pointer"
+                  className="bg-gray-900/50 border border-gray-700 hover:border-gray-500 hover:shadow-lg rounded-xl p-4 transition-all duration-200 group hover:bg-gray-900 cursor-pointer"
                   onClick={() => onSelectVideo(entry.videoId)}
                 >
                   <div className="flex items-start gap-4">
@@ -168,8 +168,8 @@ const History: React.FC<HistoryProps> = ({ onSelectVideo }) => {
                           className="w-24 h-16 object-cover rounded-lg"
                         />
                       ) : (
-                        <div className="w-24 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
-                          <Youtube className="w-8 h-8 text-gray-600" />
+                        <div className="w-24 h-16 bg-gray-800 rounded-lg flex items-center justify-center">
+                          <Youtube className="w-8 h-8 text-gray-500" />
                         </div>
                       )}
                       {entry.isShort && (
@@ -207,10 +207,10 @@ const History: React.FC<HistoryProps> = ({ onSelectVideo }) => {
                         e.stopPropagation();
                         handleDeleteEntry(entry.id);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/20 rounded-lg transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/20 rounded-lg transition-all duration-200"
                       title="Delete entry"
                     >
-                      <Trash2 className="w-4 h-4 text-gray-500 hover:text-red-400" />
+                      <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-400 transition-colors" />
                     </button>
                   </div>
                 </div>

@@ -82,36 +82,6 @@ const Analytics: React.FC = () => {
     const totalOperations = searches + scans + apiCalls;
     const errorRate = totalOperations > 0 ? (errors / totalOperations) * 100 : 0;
 
-    // Daily breakdown
-    const dailyData = useMemo(() => {
-      const days = timeRange === 'day' ? 1 : timeRange === 'week' ? 7 : 30;
-      const data: Record<string, { searches: number; scans: number; apiCalls: number }> = {};
-
-      for (let i = 0; i < days; i++) {
-        const date = new Date(now - i * 24 * 60 * 60 * 1000);
-        const dateStr = date.toISOString().split('T')[0];
-        data[dateStr] = { searches: 0, scans: 0, apiCalls: 0 };
-      }
-
-      filteredEvents.forEach(event => {
-        const dateStr = new Date(event.timestamp).toISOString().split('T')[0];
-        if (data[dateStr]) {
-          if (event.eventType === 'search_performed') data[dateStr].searches++;
-          if (event.eventType === 'scan_started') data[dateStr].scans++;
-          if (event.eventType === 'api_call') data[dateStr].apiCalls++;
-        }
-      });
-
-      return Object.entries(data)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .slice(-7);
-    }, [filteredEvents, timeRange, now]);
-
-    const peakDay = dailyData.reduce((max, [date, data]) =>
-      data.searches > max.searches ? { date, searches: data.searches } : max,
-      { date: '', searches: 0 }
-    );
-
     return {
       searches,
       scans,
@@ -121,10 +91,50 @@ const Analytics: React.FC = () => {
       commentsFetched,
       videosSearched,
       shortsSearched,
-      dailyData,
-      peakDay
+      filteredEvents
     };
   }, [analyticsEvents, searchHistory, timeRange]);
+
+  // Daily breakdown - moved to top level to follow Rules of Hooks
+  const dailyData = useMemo(() => {
+    const now = Date.now();
+    const days = timeRange === 'day' ? 1 : timeRange === 'week' ? 7 : 30;
+    const data: Record<string, { searches: number; scans: number; apiCalls: number }> = {};
+
+    for (let i = 0; i < days; i++) {
+      const date = new Date(now - i * 24 * 60 * 60 * 1000);
+      const dateStr = date.toISOString().split('T')[0];
+      data[dateStr] = { searches: 0, scans: 0, apiCalls: 0 };
+    }
+
+    stats.filteredEvents.forEach(event => {
+      const dateStr = new Date(event.timestamp).toISOString().split('T')[0];
+      if (data[dateStr]) {
+        if (event.eventType === 'search_performed') data[dateStr].searches++;
+        if (event.eventType === 'scan_started') data[dateStr].scans++;
+        if (event.eventType === 'api_call') data[dateStr].apiCalls++;
+      }
+    });
+
+    return Object.entries(data)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-7);
+  }, [stats.filteredEvents, timeRange]);
+
+  // Peak day calculation
+  const peakDay = useMemo(() => {
+    return dailyData.reduce((max, [date, data]) =>
+      data.searches > max.searches ? { date, searches: data.searches } : max,
+      { date: '', searches: 0 }
+    );
+  }, [dailyData]);
+
+  // Combined stats object for convenience
+  const combinedStats = {
+    ...stats,
+    dailyData,
+    peakDay
+  };
 
   const StatCard = ({ icon: Icon, label, value, subtext, color }: {
     icon: React.ElementType;
@@ -178,27 +188,27 @@ const Analytics: React.FC = () => {
           <StatCard
             icon={Zap}
             label="Searches"
-            value={stats.searches}
-            subtext={stats.peakDay.searches > 0 ? `Peak: ${stats.peakDay.searches}` : undefined}
+            value={combinedStats.searches}
+            subtext={combinedStats.peakDay.searches > 0 ? `Peak: ${combinedStats.peakDay.searches}` : undefined}
             color="bg-blue-500/20"
           />
           <StatCard
             icon={TrendingUp}
             label="Scans"
-            value={stats.scans}
-            subtext={`${stats.commentsFetched.toLocaleString()} comments`}
+            value={combinedStats.scans}
+            subtext={`${combinedStats.commentsFetched.toLocaleString()} comments`}
             color="bg-emerald-500/20"
           />
           <StatCard
             icon={Youtube}
             label="Videos"
-            value={stats.videosSearched}
+            value={combinedStats.videosSearched}
             color="bg-red-500/20"
           />
           <StatCard
             icon={Film}
             label="Shorts"
-            value={stats.shortsSearched}
+            value={combinedStats.shortsSearched}
             color="bg-purple-500/20"
           />
         </div>
@@ -212,21 +222,21 @@ const Analytics: React.FC = () => {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">API Calls</span>
-              <span className="font-mono font-medium">{stats.apiCalls}</span>
+              <span className="font-mono font-medium">{combinedStats.apiCalls}</span>
             </div>
-            {stats.errors > 0 && (
+            {combinedStats.errors > 0 && (
               <div className="flex justify-between items-center">
                 <span className="text-sm text-red-400 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
                   Errors
                 </span>
-                <span className="font-mono font-medium text-red-400">{stats.errors}</span>
+                <span className="font-mono font-medium text-red-400">{combinedStats.errors}</span>
               </div>
             )}
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-400">Error Rate</span>
-              <span className={`font-mono font-medium ${stats.errorRate > 5 ? 'text-red-400' : 'text-emerald-400'}`}>
-                {stats.errorRate.toFixed(1)}%
+              <span className={`font-mono font-medium ${combinedStats.errorRate > 5 ? 'text-red-400' : 'text-emerald-400'}`}>
+                {combinedStats.errorRate.toFixed(1)}%
               </span>
             </div>
           </div>
@@ -238,10 +248,10 @@ const Analytics: React.FC = () => {
             <Calendar className="w-4 h-4 text-gray-400" />
             Daily Activity
           </h3>
-          {stats.dailyData.length > 0 ? (
+          {combinedStats.dailyData.length > 0 ? (
             <div className="space-y-2">
-              {stats.dailyData.map(([date, data]) => {
-                const maxSearches = Math.max(...stats.dailyData.map(([, d]) => d.searches), 1);
+              {combinedStats.dailyData.map(([date, data]) => {
+                const maxSearches = Math.max(...combinedStats.dailyData.map(([, d]) => d.searches), 1);
                 const percentage = (data.searches / maxSearches) * 100;
 
                 return (
