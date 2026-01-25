@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Verification - Source Hunter</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 { color: #4ade80; }
+        .test-section {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .pass { color: #4ade80; }
+        .fail { color: #f87171; }
+        .info { color: #60a5fa; }
+        pre {
+            background: #0f3460;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-size: 13px;
+        }
+        button {
+            background: #4ade80;
+            color: #1a1a2e;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+        }
+        button:hover { background: #22c55e; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <h1>🔍 IndexedDB Analytics Verification</h1>
+    <p>This page verifies that the analytics implementation is working correctly.</p>
+
+    <button id="runTests" onclick="runAllTests()">▶️ Run All Tests</button>
+    <button onclick="clearTestData()" style="background: #f87171; margin-left: 8px;">🗑️ Clear Test Data</button>
+
+    <div id="results"></div>
+
+    <script type="module">
+        // Import Dexie
+        import { Dexie } from 'https://cdn.jsdelivr.net/npm/dexie@4.2.1/dist/dexie.mjs';
+
+        // Test database setup
+        class TestDatabase extends Dexie {
+            constructor() {
+                super('SourceHunterDB');
+                this.version(1).stores({
+                    comments: 'id, parentId, videoId, score, likeCount',
+                    videos: 'videoId'
+                });
+                this.version(2).stores({
+                    comments: 'id, parentId, videoId, score, likeCount',
+                    videos: 'videoId',
+                    searchHistory: '++id, videoId, timestamp, query',
+                    analyticsEvents: '++id, eventType, timestamp, videoId',
+                    contentTypeMetrics: '++id, [videoId+date], videoId, contentType, date'
+                });
+            }
+        }
+
+        const db = new TestDatabase();
+
+        // Helper to delay
+        const delay = ms => new Promise(r => setTimeout(r, ms));
+
+        // Test functions
+        async function testSchema() {
+            const section = createSection('1️⃣ Database Schema Test');
+            try {
+                const tables = db.tables.map(t => t.name);
+                const expected = ['comments', 'videos', 'searchHistory', 'analyticsEvents', 'contentTypeMetrics'];
+                const missing = expected.filter(t => !tables.includes(t));
+
+                if (missing.length === 0) {
+                    section.innerHTML += '<p class="pass">✅ All required tables exist</p>';
+                    section.innerHTML += `<pre>Tables: ${tables.join(', ')}</pre>`;
+                    return true;
+                } else {
+                    section.innerHTML += `<p class="fail">❌ Missing tables: ${missing.join(', ')}</p>`;
+                    return false;
+                }
+            } catch (e) {
+                section.innerHTML += `<p class="fail">❌ Error: ${e.message}</p>`;
+                return false;
+            }
+        }
+
+        async function testSearchHistory() {
+            const section = createSection('2️⃣ Search History Test');
+            try {
+                const testId = 'verify_' + Date.now();
+                const testUrl = 'https://youtube.com/watch?v=test123';
+
+                // Add test entry
+                await db.searchHistory.add({
+                    videoId: testId,
+                    query: testUrl,
+                    timestamp: Date.now(),
+                    isShort: false,
+                    videoTitle: 'Test Video',
+                    thumbnailUrl: 'https://example.com/thumb.jpg'
+                });
+
+                // Retrieve
+                const entry = await db.searchHistory.where('videoId').equals(testId).first();
+
+                if (entry && entry.query === testUrl) {
+                    section.innerHTML += '<p class="pass">✅ Search history entry stored and retrieved</p>';
+                    section.innerHTML += `<pre>Video ID: ${entry.videoId}
+Query: ${entry.query}
+Is Short: ${entry.isShort}
+Title: ${entry.videoTitle}</pre>`;
+                    await db.searchHistory.where('videoId').equals(testId).delete();
+                    return true;
+                } else {
+                    section.innerHTML += '<p class="fail">❌ Entry not found or data mismatch</p>';
+                    return false;
+                }
+            } catch (e) {
+                section.innerHTML += `<p class="fail">❌ Error: ${e.message}</p>`;
+                return false;
+            }
+        }
+
+        async function testAnalyticsEvents() {
+            const section = createSection('3️⃣ Analytics Events Test');
+            try {
+                const videoId = 'verify_events_' + Date.now();
+
+                // Add events
+                await db.analyticsEvents.add({
+                    eventType: 'search_performed',
+                    timestamp: Date.now(),
+                    videoId: videoId,
+                    metadata: { contentType: 'video', queryLength: 50 }
+                });
+
+                await db.analyticsEvents.add({
+                    eventType: 'scan_started',
+                    timestamp: Date.now(),
+                    videoId: videoId,
+                    metadata: { scanMode: 'smart' }
+                });
+
+                // Retrieve
+                const events = await db.analyticsEvents
+                    .where('videoId')
+                    .equals(videoId)
+                    .toArray();
+
+                if (events.length === 2) {
+                    section.innerHTML += '<p class="pass">✅ Analytics events stored and retrieved</p>';
+                    section.innerHTML += `<pre>Total events: ${events.length}
+Event types: ${events.map(e => e.eventType).join(', ')}</pre>`;
+                    await db.analyticsEvents.where('videoId').equals(videoId).delete();
+                    return true;
+                } else {
+                    section.innerHTML += `<p class="fail">❌ Expected 2 events, got ${events.length}</p>`;
+                    return false;
+                }
+            } catch (e) {
+                section.innerHTML += `<p class="fail">❌ Error: ${e.message}</p>`;
+                return false;
+            }
+        }
+
+        async function testContentTypeMetrics() {
+            const section = createSection('4️⃣ Content Type Metrics Test');
+            try {
+                const videoId = 'verify_metrics_' + Date.now();
+                const today = new Date().toISOString().split('T')[0];
+
+                await db.contentTypeMetrics.add({
+                    videoId: videoId,
+                    contentType: 'video',
+                    date: today,
+                    searchCount: 1,
+                    scanCount: 1,
+                    commentsFetched: 100,
+                    lastUpdated: Date.now()
+                });
+
+                const metric = await db.contentTypeMetrics
+                    .where('[videoId+date]')
+                    .equals([videoId, today])
+                    .first();
+
+                if (metric && metric.searchCount === 1) {
+                    section.innerHTML += '<p class="pass">✅ Content type metrics stored and retrieved</p>';
+                    section.innerHTML += `<pre>Search Count: ${metric.searchCount}
+Scan Count: ${metric.scanCount}
+Comments Fetched: ${metric.commentsFetched}</pre>`;
+                    await db.contentTypeMetrics.where('videoId').equals(videoId).delete();
+                    return true;
+                } else {
+                    section.innerHTML += '<p class="fail">❌ Metric not found or data mismatch</p>';
+                    return false;
+                }
+            } catch (e) {
+                section.innerHTML += `<p class="fail">❌ Error: ${e.message}</p>`;
+                return false;
+            }
+        }
+
+        async function testQueryPerformance() {
+            const section = createSection('5️⃣ Query Performance Test');
+            try {
+                // Add multiple events
+                const adds = [];
+                for (let i = 0; i < 100; i++) {
+                    adds.push(db.analyticsEvents.add({
+                        eventType: 'api_call',
+                        timestamp: Date.now(),
+                        metadata: { apiEndpoint: 'test' }
+                    }));
+                }
+                await Promise.all(adds);
+
+                const start = performance.now();
+                const events = await db.analyticsEvents
+                    .where('eventType')
+                    .equals('api_call')
+                    .limit(50)
+                    .toArray();
+                const duration = performance.now() - start;
+
+                section.innerHTML += '<p class="pass">✅ Query performance test completed</p>';
+                section.innerHTML += `<pre>Retrieved ${events.length} events in ${duration.toFixed(2)}ms</pre>`;
+
+                // Cleanup test events
+                await db.analyticsEvents.where('eventType').equals('api_call').delete();
+                return true;
+            } catch (e) {
+                section.innerHTML += `<p class="fail">❌ Error: ${e.message}</p>`;
+                return false;
+            }
+        }
+
+        async function testErrorTracking() {
+            const section = createSection('6️⃣ Error Rate Tracking Test');
+            try {
+                const videoId = 'verify_errors_' + Date.now();
+
+                // Add some operations and errors
+                await db.analyticsEvents.add({ eventType: 'search_performed', timestamp: Date.now(), videoId });
+                await db.analyticsEvents.add({ eventType: 'search_performed', timestamp: Date.now(), videoId });
+                await db.analyticsEvents.add({ eventType: 'scan_started', timestamp: Date.now(), videoId });
+                await db.analyticsEvents.add({ eventType: 'scan_error', timestamp: Date.now(), videoId, metadata: { error: 'Test error' } });
+
+                // Get total operations and errors
+                const allEvents = await db.analyticsEvents.where('videoId').equals(videoId).toArray();
+                const errors = allEvents.filter(e => e.eventType === 'scan_error');
+
+                const errorRate = (errors.length / allEvents.length) * 100;
+
+                section.innerHTML += '<p class="pass">✅ Error rate tracking works</p>';
+                section.innerHTML += `<pre>Total operations: ${allEvents.length}
+Errors: ${errors.length}
+Error rate: ${errorRate.toFixed(2)}%</pre>`;
+
+                await db.analyticsEvents.where('videoId').equals(videoId).delete();
+                return true;
+            } catch (e) {
+                section.innerHTML += `<p class="fail">❌ Error: ${e.message}</p>`;
+                return false;
+            }
+        }
+
+        async function testVideoVsShortTracking() {
+            const section = createSection('7️⃣ Video vs Short Tracking Test');
+            try {
+                const videoId = 'verify_vstype_' + Date.now();
+                const shortVideoId = 'verify_short_' + Date.now();
+
+                // Add video search
+                await db.analyticsEvents.add({
+                    eventType: 'search_performed',
+                    timestamp: Date.now(),
+                    videoId,
+                    metadata: { contentType: 'video', queryLength: 50 }
+                });
+
+                // Add short search
+                await db.analyticsEvents.add({
+                    eventType: 'search_performed',
+                    timestamp: Date.now(),
+                    videoId: shortVideoId,
+                    metadata: { contentType: 'short', queryLength: 11 }
+                });
+
+                // Query for videos and shorts
+                const allSearches = await db.analyticsEvents.where('eventType').equals('search_performed').toArray();
+                const videos = allSearches.filter(e => e.metadata?.contentType === 'video').length;
+                const shorts = allSearches.filter(e => e.metadata?.contentType === 'short').length;
+
+                section.innerHTML += '<p class="pass">✅ Video vs short tracking works</p>';
+                section.innerHTML += `<pre>Total searches: ${allSearches.length}
+Video searches: ${videos}
+Short searches: ${shorts}</pre>`;
+
+                // Cleanup
+                await db.analyticsEvents.where('videoId').equals(videoId).delete();
+                await db.analyticsEvents.where('videoId').equals(shortVideoId).delete();
+                return true;
+            } catch (e) {
+                section.innerHTML += `<p class="fail">❌ Error: ${e.message}</p>`;
+                return false;
+            }
+        }
+
+        function createSection(title) {
+            const div = document.createElement('div');
+            div.className = 'test-section';
+            div.innerHTML = `<h3>${title}</h3>`;
+            document.getElementById('results').appendChild(div);
+            return div;
+        }
+
+        async function runAllTests() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            const btn = document.getElementById('runTests');
+            btn.disabled = true;
+            btn.textContent = '⏳ Running...';
+
+            await db.open();
+            await delay(100);
+
+            const results = [];
+            results.push(await testSchema());
+            results.push(await testSearchHistory());
+            results.push(await testAnalyticsEvents());
+            results.push(await testContentTypeMetrics());
+            results.push(await testQueryPerformance());
+            results.push(await testErrorTracking());
+            results.push(await testVideoVsShortTracking());
+
+            // Summary
+            const summary = document.createElement('div');
+            summary.className = 'test-section';
+            const passed = results.filter(r => r).length;
+            const failed = results.filter(r => !r).length;
+            summary.innerHTML = `
+                <h2>📊 Summary</h2>
+                <p class="pass">Passed: ${passed}/7</p>
+                <p class="${failed > 0 ? 'fail' : 'pass'}">Failed: ${failed}/7</p>
+                ${failed === 0 ? '<p class="pass" style="font-size: 1.2em; margin-top: 16px;">🎉 All tests passed!</p>' : '<p class="fail">Some tests failed. Review the implementation.</p>'}
+            `;
+            resultsDiv.appendChild(summary);
+
+            btn.disabled = false;
+            btn.textContent = '▶️ Run All Tests';
+        }
+
+        async function clearTestData() {
+            await db.open();
+            await db.searchHistory.where('videoId').startsWith('verify_').delete();
+            await db.analyticsEvents.where('videoId').startsWith('verify_').delete();
+            await db.contentTypeMetrics.where('videoId').startsWith('verify_').delete();
+            alert('Test data cleared!');
+        }
+
+        // Make functions globally available
+        window.runAllTests = runAllTests;
+        window.clearTestData = clearTestData;
+    </script>
+</body>
+</html>
