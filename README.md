@@ -2,12 +2,14 @@
 
 # Source Hunter
 
-**A powerful YouTube comment analysis tool for finding sources, links, and insights in video discussions.**
+**A powerful YouTube comment analysis tool for finding source of the video/short or search for other stuff from the comments section.**
 
 [![React](https://img.shields.io/badge/React-19.2.3-%2361DAFB?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8.2-%233178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.2.0-%23646CFF?logo=vite)](https://vitejs.dev/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+**There is a hosted version as well, if you just want to start using it - [yt-source-hunter.pages.dev](https://yt-source-hunter.pages.dev)**
 
 </div>
 
@@ -16,7 +18,7 @@
 
 ## Overview
 
-**Source Hunter** is a web application that helps you hunt for the **Movie/Anime/Drama** or search for other source information from YouTube comments section. Source Hunter makes it easy to search, analyze, and organize YouTube comment data at scale.
+**Source Hunter** is a web application that helps you hunt for the **Movie/Anime/Drama** or search for other source of information from YouTube comments section. Source Hunter makes it easy to search, analyze, and organize YouTube comment data.
 
 We always come through Youtube videos/shorts where creators do not mention the name of the **Movie/Anime/Drama** but the comment section sometimes has the answer. This tool was mainly made for this purpose. we have been using it for a while and it works wonders, so we wanted to share it with you all as well. 
 
@@ -75,6 +77,7 @@ npm install
 ### 3. Get a YouTube Data API Key
 
 You'll need a YouTube Data API key to use this application:
+> **Note** - Please be aware of the daily free limits of the API to not get billed unless required.
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select an existing one
